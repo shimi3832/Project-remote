@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ESP32 8-Wheel Robot Remote</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #0b0f14;
+      color: #e2e8f0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .app-container {
+      width: 95vw;
+      max-width: 1100px;
+      height: 90vh;
+      max-height: 650px;
+      background-color: #121820;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    header {
+      text-align: center;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr 1.1fr;
+      gap: 14px;
+      flex: 1;
+    }
+
+    .panel {
+      background-color: #18202c;
+      border: 1px solid #243042;
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .btn-option {
+      background-color: #202b3c;
+      border: 1px solid #2c3b52;
+      border-radius: 8px;
+      color: #94a3b8;
+      padding: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.15s ease;
+    }
+
+    .btn-option .sub {
+      font-size: 0.65rem;
+      font-weight: 400;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .btn-option.active {
+      background-color: #064e3b;
+      border-color: #10b981;
+      color: #34d399;
+    }
+
+    .btn-option.active .sub {
+      color: #10b981;
+    }
+
+    /* Center D-Pad Panel */
+    .center-panel {
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sub-header {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #475569;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 75px);
+      grid-template-rows: repeat(3, 75px);
+      gap: 10px;
+    }
+
+    .dpad-btn {
+      background-color: #202b3c;
+      border: 1px solid #2c3b52;
+      border-radius: 12px;
+      color: #f1f5f9;
+      font-size: 1.8rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: background 0.1s;
+      touch-action: manipulation;
+    }
+
+    .dpad-btn:active, .dpad-btn.pressed {
+      background-color: #334155;
+      border-color: #64748b;
+    }
+
+    .stop-btn {
+      font-size: 1.2rem;
+      color: #94a3b8;
+    }
+
+    /* Right Panel Elements */
+    .connect-btn {
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #e2e8f0;
+      padding: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #ef4444;
+    }
+
+    .dot.connected {
+      background-color: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    .lights-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .light-card {
+      background-color: #131b26;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .light-led {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #334155;
+    }
+
+    .light-led.active-front {
+      background-color: #38bdf8;
+      box-shadow: 0 0 8px #38bdf8;
+    }
+
+    .light-led.active-rear {
+      background-color: #ef4444;
+      box-shadow: 0 0 8px #ef4444;
+    }
+
+    .light-card span {
+      font-size: 0.6rem;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .log-box {
+      flex: 1;
+      background-color: #0b0f14;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 8px;
+      font-family: monospace;
+      font-size: 0.7rem;
+      color: #a7f3d0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .log-item {
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <header>ESP32 8-Wheel Robot Remote</header>
+
+  <div class="main-grid">
+    <!-- MODE & SPEED -->
+    <div class="panel">
+      <div class="panel-title">MODE</div>
+      <div class="btn-group">
+        <button class="btn-option active" id="modeR" onclick="setMode('R')">R<span class="sub">Remote</span></button>
+        <button class="btn-option" id="modeA" onclick="setMode('A')">A<span class="sub">Auto</span></button>
+        <button class="btn-option" id="modeL" onclick="setMode('L')">L<span class="sub">Escape</span></button>
+      </div>
+
+      <div class="panel-title">SPEED</div>
+      <div class="btn-group">
+        <button class="btn-option" id="speed1" onclick="setSpeed('1')">1<span class="sub">PWM 120</span></button>
+        <button class="btn-option active" id="speed2" onclick="setSpeed('2')">2<span class="sub">PWM 180</span></button>
+        <button class="btn-option" id="speed3" onclick="setSpeed('3')">3<span class="sub">PWM 255</span></button>
+      </div>
+    </div>
+
+    <!-- DRIVE DPAD -->
+    <div class="panel center-panel">
+      <div class="sub-header">HOLD TO DRIVE · RELEASE TO STOP</div>
+      <div class="dpad">
+        <div></div>
+        <button class="dpad-btn" id="btnF">↑</button>
+        <div></div>
+        <button class="dpad-btn" id="btnL">←</button>
+        <button class="dpad-btn stop-btn" id="btnS">☐</button>
+        <button class="dpad-btn" id="btnR">→</button>
+        <div></div>
+        <button class="dpad-btn" id="btnB">↓</button>
+        <div></div>
+      </div>
+    </div>
+
+    <!-- STATUS & LOGS -->
+    <div class="panel">
+      <button class="connect-btn" id="connectBtn" onclick="toggleConnect()">
+        <span class="dot" id="statusDot"></span>
+        <span id="connectText">CONNECT</span>
+      </button>
+
+      <div class="panel-title">LIGHTS</div>
+      <div class="lights-grid">
+        <div class="light-card"><span class="light-led" id="ledFL"></span><span>FRONT L</span></div>
+        <div class="light-card"><span class="light-led" id="ledFR"></span><span>FRONT R</span></div>
+        <div class="light-card"><span class="light-led active-rear" id="ledRL"></span><span>REAR L</span></div>
+        <div class="light-card"><span class="light-led active-rear" id="ledRR"></span><span>REAR R</span></div>
+      </div>
+
+      <div class="panel-title">LOG</div>
+      <div class="log-box" id="logBox">
+        <div class="log-item">[System] Ready to connect.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SERVICE_UUID           = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+  const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e"; // Browser -> ESP32
+  const CHARACTERISTIC_UUID_TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e"; // ESP32 -> Browser
+
+  let bleDevice = null;
+  let rxCharacteristic = null;
+  let txCharacteristic = null;
+  let isConnected = false;
+
+  const logBox = document.getElementById("logBox");
+
+  function log(msg) {
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    const div = document.createElement("div");
+    div.className = "log-item";
+    div.innerText = `[${time}] ${msg}`;
+    logBox.appendChild(div);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  async function toggleConnect() {
+    if (isConnected) {
+      if (bleDevice && bleDevice.gatt.connected) {
+        bleDevice.gatt.disconnect();
+      }
+      return;
+    }
+
+    try {
+      log("Scanning BLE devices...");
+      bleDevice = await navigator.bluetooth.requestDevice({
+        filters: [{ name: "ESP32_8Wheel_Robot" }],
+        optionalServices: [SERVICE_UUID]
+      });
+
+      bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+      log("Connecting to GATT Server...");
+      const server = await bleDevice.gatt.connect();
+
+      log("Getting BLE Service...");
+      const service = await server.getPrimaryService(SERVICE_UUID);
+
+      log("Getting Characteristics...");
+      rxCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
+      txCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_TX);
+
+      await txCharacteristic.startNotifications();
+      txCharacteristic.addEventListener('characteristicvaluechanged', handleNotifications);
+
+      isConnected = true;
+      document.getElementById("statusDot").classList.add("connected");
+      document.getElementById("connectText").innerText = "DISCONNECT";
+      log("Konektado na sa robot!");
+    } catch (error) {
+      log("Error: " + error.message);
+    }
+  }
+
+  function onDisconnected() {
+    isConnected = false;
+    rxCharacteristic = null;
+    txCharacteristic = null;
+    document.getElementById("statusDot").classList.remove("connected");
+    document.getElementById("connectText").innerText = "CONNECT";
+    updateLightUI('S');
+    log("Hindi pa konektado sa robot.");
+  }
+
+  function handleNotifications(event) {
+    const value = new TextDecoder().decode(event.target.value);
+    log(`Robot: ${value}`);
+  }
+
+  async function sendCmd(cmd) {
+    if (!isConnected || !rxCharacteristic) {
+      log(`[Not Sent '${cmd}'] Hindi pa konektado.`);
+      return;
+    }
+    try {
+      const encoder = new TextEncoder();
+      await rxCharacteristic.writeValue(encoder.encode(cmd));
+      log(`SEND: ${cmd}`);
+    } catch (e) {
+      log("Send Fail: " + e.message);
+    }
+  }
+
+  function setMode(m) {
+    document.querySelectorAll('.btn-group .btn-option').forEach(b => {
+      if (b.id.startsWith('mode')) b.classList.remove('active');
+    });
+    document.getElementById(`mode${m}`).classList.add('active');
+    sendCmd(m);
+  }
+
+  function setSpeed(s) {
+    document.querySelectorAll('.btn-group .btn-option').forEach(b => {
+      if (b.id.startsWith('speed')) b.classList.remove('active');
+    });
+    document.getElementById(`speed${s}`).classList.add('active');
+    sendCmd(s);
+  }
+
+  // Visual LED Updates according to directional commands
+  function updateLightUI(cmd) {
+    const fl = document.getElementById("ledFL");
+    const fr = document.getElementById("ledFR");
+    const rl = document.getElementById("ledRL");
+    const rr = document.getElementById("ledRR");
+
+    fl.className = "light-led";
+    fr.className = "light-led";
+    rl.className = "light-led";
+    rr.className = "light-led";
+
+    if (cmd === 'F') {
+      fl.classList.add("active-front");
+      fr.classList.add("active-front");
+    } else if (cmd === 'B' || cmd === 'S') {
+      rl.classList.add("active-rear");
+      rr.classList.add("active-rear");
+    } else if (cmd === 'L') {
+      fl.classList.add("active-front");
+      rl.classList.add("active-rear");
+    } else if (cmd === 'R') {
+      fr.classList.add("active-front");
+      rr.classList.add("active-rear");
+    }
+  }
+
+  // D-Pad Button Press Setup
+  function bindDriveButton(id, command) {
+    const btn = document.getElementById(id);
+    
+    const startDrive = (e) => {
+      e.preventDefault();
+      btn.classList.add("pressed");
+      updateLightUI(command);
+      sendCmd(command);
+    };
+
+    const stopDrive = (e) => {
+      e.preventDefault();
+      btn.classList.remove("pressed");
+      updateLightUI('S');
+      sendCmd('S');
+    };
+
+    btn.addEventListener("pointerdown", startDrive);
+    btn.addEventListener("pointerup", stopDrive);
+    btn.addEventListener("pointerleave", stopDrive);
+  }
+
+  bindDriveButton("btnF", "F");
+  bindDriveButton("btnB", "B");
+  bindDriveButton("btnL", "L");
+  bindDriveButton("btnR", "R");
+
+  // Center Stop Button
+  document.getElementById("btnS").addEventListener("click", () => {
+    updateLightUI('S');
+    sendCmd('S');
+  });
+</script>
+</body>
+</html>
